@@ -1,0 +1,85 @@
+25/11/2024 Observe:
+When max sequence length becomes longer more and more mistakes when counting last token
+Error does not seem to be present with hard coded token
+
+Try: 
+Count first token, to defeat catastrophic forgetting?
+-- Seems to solve the issue up untill 100 max sequence length, 500 is still broken
+-- Correction, also still broken. Better than counting last, not perfect
+
+Try:
+Investigate Rasp.EQ, rounding errors?
+-- Changed the equality operator in tracr/tracr/rasp/rasp.py
+-- Does not seem to work
+
+Try:
+Use hard coded token, return count or length - count based on flip token
+-- Their implementation also starts to crack at longer sequences and sequence lengths
+-- First try to make it more robust. Range: -1 -> +1 for example? Make into new try
+
+Try:
+Range -1, +1 for example?
+
+Note:
+A large mlp_exactness seems to work. Investigate this further. What is this parameter
+
+26/11/2024
+Building compiler for pytorch
+
+27/11/2024
+Check if dict is the same as model params
+
+02/12/2024
+You have to put in your own padding tokens, mask takes care of that
+
+03/12/2024
+Code does not work, investigate embeddign and unembedding
+Discovery: first Encode, than Embed. Currently have access to the encoding
+It seems that in the encoding, 1 -> 1, 0 -> 0, BOS -> 2, SEP -> 4. Empirically determined
+Information flow: 
+    Assembled Transformer
+    Compiled Transformer
+
+05/12/2024
+Embeddings to deal with random sizes
+It seems that rasp can deal with random sizes, pytorch model cannot
+
+07/12/2024
+Cannot pass non torch elements through model, loses gradients
+Also loses BOS token after classification
+
+17/12/2024
+Argmax seems to be the gradient problem. Try gumbel softmax?
+
+18/12/2024
+Gumbel softmax does not work, as does the softmax temperature trick. Straight through estimator is an idea
+Crossentropy loss for loss also seems to work
+
+03/01/2025
+Function to evaluatre model without classifier
+Batch loss instwead of sample loss
+More data
+Also, unclear what bos becomes. Therefore alsways loss. Investigate possibiliy without
+Investigate model, inconsistent behaviour
+
+10/01/2025
+Found out it has to do with the encoding that is wrong. Now using custom encoding from the model. Might change that later
+Figured out that the classifier is not string enough. Does not learn the solution when presented with the trivial one including 0
+
+30/01/2025
+Check the output dimension. It is either 20 or 21. batch x 20 x 21. Why?
+
+31/01/2025
+BOS token is different bsed on conditions and vocab. Find solution
+Slice gradient?, Only keep looking at the second token?
+
+Consider the following problem. I have a trained model, "B", that using a transformer architecture, learned to count the second token in the sequence, so [BOS, 0, SEP, 1, 0, 0] yields [BOS, 3, 3, 3, 3, 3] since there are 3 zeros in the sequence. Now I want to insert a classifier model, "A", in the sequence, that learns what the to be counted token is. So, after training, [BOS, TMP, SEP, 1, 0, 0] should be first classified to be [BOS, 0, SEP, 1, 0, 0] and then fed to my second stage "B" yielding the final result. However, since we are dealing with embeddings, the whole architecture looks like this: embedding, A, B, unembedding. This is the case because the embedding is not differentiable and thus needs to come first when wanting to train it end to end. Model "B" is frozen with required_grad = False. The problem is that my model does nt learn end to end, the gradients become very small or something. How do I solve this?
+
+23/02/2025
+Gumbell softmax with selectng the correct tpoken works! Initial mistake was to compy the embedded sequence and therefore the incorrect positional encoding.
+
+
+13/04/2025
+Potential error in data set creation, faulty ground thruth. Overlap or failure? Fix to improve consistency
+14/042025
+Fixed but inbalance possible
