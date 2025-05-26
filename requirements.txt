@@ -1,0 +1,7 @@
+matplotlib
+pip install -U "jax[cuda12]"
+
+
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+
